@@ -1,24 +1,26 @@
 
 import java.util.Scanner;
 
+class Question {
 
-
-class Question{
     String question;
     String[] options;
     int answer;
 
-    public Question(String question, String[] options, int answer){
-        this.question= question;
+    public Question(String question, String[] options, int answer) {
+        this.question = question;
         this.options = options;
         this.answer = answer;
     }
 }
 
-class QuestionDataSet{
+// interface IQuestionDataSet { 
+//      Question[] getQuestionData();
+// }
+class QuestionDataSet {
 
     String level;
-    Question[] currentQuestionData; 
+    Question[] currentQuestionData;
 
     // Beginner-level programming questions
     Question[] level1 = {
@@ -47,117 +49,171 @@ class QuestionDataSet{
         new Question("Which Java keyword prevents a method from being overridden?", new String[]{"private", "static", "final", "abstract"}, 3)
     };
 
-    public void setLevel(String levelInput){
-        level=levelInput;
+    public void setLevel(String levelInput) {
+        level = levelInput;
     }
-    public Question[] getQuestionData(){
-        if(level =="level1"){
+
+    public Question[] getQuestionData() {
+        if (level == "level1") {
             return level1;
         }
-        if(level=="level2"){
+        if (level == "level2") {
             return level2;
         }
-            return level3;
-        
+        return level3;
     }
 
-    public String nextLevel(){
-         if(level =="level1"){
+    public String nextLevel() {
+        if (level == "level1") {
             return "level2";
         }
-        if(level=="level2"){
+        if (level == "level2") {
             return "level3";
         }
-            return "end";
+        return "end";
     }
-     
+
+    public String getCurrentLevel() {
+        return level;
+    }
 }
 
-class QuizSystem{
-    String level;
-    Scanner scanner= new Scanner(System.in);
-    QuestionDataSet questionDataSet = new QuestionDataSet();
+class QuizLogic {
+
     Question[] questionsData;
+    private QuestionDataSet _questionDataSet;
+    private int currentQuestionIndex;
+
+    QuizLogic(QuestionDataSet questionDataSet) {
+        _questionDataSet = questionDataSet;
+        currentQuestionIndex = 0;
+    }
+
+    public void setLevel(String level) {
+        // Debug assert when questionDataSet is null
+        // Debug assert when level is empty or null
+        _questionDataSet.setLevel(level);
+        questionsData = _questionDataSet.getQuestionData();
+    }
+
+    public Boolean hasNextQuestion() {
+        if (currentQuestionIndex >= questionsData.length) {
+            currentQuestionIndex = 0;
+            return false;
+        }
+        return true;
+    }
+
+    public Question getNextQuestion() {
+        return questionsData[currentQuestionIndex];
+    }
+
+    public Boolean checkAnswer(int userInput) {
+        Boolean isValidAnswer = userInput == questionsData[currentQuestionIndex].answer;
+        currentQuestionIndex++;
+        return isValidAnswer;
+    }
+}
+
+// Presentation Layer
+class QuizUI {
+
+    private Scanner _scanner;
+    QuestionDataSet _questionDataSet = new QuestionDataSet();
+    QuizLogic _quizLogic = new QuizLogic(_questionDataSet);
+
     int marks;
     int totalMarks;
-    int status; // 0: hold, 1: continue
 
-    public QuizSystem(){
-        this.level="level1";
-        this.questionDataSet.setLevel("level1");
-        this.totalMarks=0;
-        this.status = 1;
+    public QuizUI(Scanner scanner) {
+        _scanner = scanner;
+        _quizLogic.setLevel("level1");
+        totalMarks = 0;
+        marks = 0;
     }
 
-    public void startQuiz(){
-        int questionIndex=1;
-        marks = 0;
-        questionsData = questionDataSet.getQuestionData();
-
-        for(Question question: questionsData){
-            System.out.println(questionIndex + ") " + question.question);
-            for(int i=0;i<question.options.length;i++){
-                System.out.println(i+1 + ". " + question.options[i]);
-            }
-            int userAnswer = scanner.nextInt();
-
-            if(userAnswer == question.answer){
-                marks++;
-            }
-            System.out.println("");
-            questionIndex++;
+    private void displayQuestion(Question question) {
+        System.out.println(question.question);
+        for (int i = 0; i < question.options.length; i++) {
+            System.out.println(i + 1 + ". " + question.options[i]);
         }
-        if(marks>4){
-            System.out.println("Congrats you cleared the " + level + " and you got "+ marks+" out of 5");
-            level = questionDataSet.nextLevel();
-            if(level!="end"){
-                System.out.println("Do you want to next level? (Enter 'y' for yes)");
-                String userInput = scanner.next();
-                if(userInput.trim().equalsIgnoreCase("y")){
-                    questionDataSet.setLevel(level);
-                    totalMarks = totalMarks + marks;
-                    status = 1;
-                    return;
+    }
+
+    private void displayResult() {
+        System.out.println("=====================================================================================================");
+        if (marks > 4) {
+            System.out.println("Congrats you cleared the " + _questionDataSet.getCurrentLevel() + " and you got " + marks + " out of 5");
+        } else {
+            System.out.println("Sorry you didn't passed the " + _questionDataSet.getCurrentLevel() + " and you got " + marks + " out of 5");
+        }
+        System.out.println("=====================================================================================================");
+    }
+
+    private int getUserInput() {
+        return _scanner.nextInt();
+    }
+
+    private void levelUpdate() {
+        String level = _questionDataSet.nextLevel();
+        _quizLogic.setLevel(level);
+    }
+
+    private void resetTheMark() {
+        marks = 0;
+    }
+
+    private void incrementTheMark() {
+        marks++;
+    }
+
+    private void validateAndUpdateLevel() {
+        if (marks > 4) {
+            levelUpdate();
+        }
+    }
+
+    public void start() {
+
+        while (hasNextLevel()) {
+            while (_quizLogic.hasNextQuestion()) {
+                Question question = _quizLogic.getNextQuestion();
+
+                // Display Question
+                displayQuestion(question);
+
+                // Get User Input
+                int userInput = getUserInput();
+
+                // Check the Answer
+                Boolean isValidAnswer = _quizLogic.checkAnswer(userInput);
+
+                // If answer is valid then add the marks.
+                if (isValidAnswer) {
+                    incrementTheMark();
                 }
             }
-        }else{
-            System.out.println("Sorry you didn't passed the level" + " and you got "+ marks+" out of 5" + " , Try again? (Enter 'y' for yes)");
-            String userInput = scanner.next();
-            if(userInput.trim().equalsIgnoreCase("y")){
-                questionDataSet.setLevel(level);
-                status = 1;
-                return;
-            }
+
+
+            displayResult();
+
+            validateAndUpdateLevel();
+
+            resetTheMark();
         }
-        status = 0;
     }
-    
-    public Boolean hasNextLevel(){
-        if(level!="end"){
+
+    private Boolean hasNextLevel() {
+        if (_questionDataSet.getCurrentLevel() != "end") {
             return true;
         }
         return false;
     }
-    public void updateStatus(int newStatus){
-        status = newStatus;
-    }
 }
 
-public class QuizApp{
-    public static void main(String[] args){
-    Scanner scanner= new Scanner(System.in);
-    QuizSystem quizSystem= new QuizSystem();
+public class QuizApp {
 
-    while(quizSystem.hasNextLevel()){
-            quizSystem.startQuiz();
-            while(quizSystem.status == 0 && quizSystem.hasNextLevel()){
-                System.out.println("Press 'y' to continue with the quiz.");
-                String userInput = scanner.next();
-                if(userInput.trim().equalsIgnoreCase("y")){
-                    quizSystem.updateStatus(1);
-                }
-            }
-       }
+    public static void main(String[] args) {
+        QuizUI quizUI = new QuizUI(new Scanner(System.in));
+        quizUI.start();
     }
 }
- 
